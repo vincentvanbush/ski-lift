@@ -40,6 +40,7 @@ struct msg {
 };
 
 struct state_info {
+	int mstrtid;
 	int mytid;
 	int *local_clock;
 	int *can_enter_lift;
@@ -50,6 +51,19 @@ struct state_info {
 	int *lift_free;
 	int *pending_accepts_sum;
 };
+
+char *stringify(int what) {
+	switch (what) {
+		case PHASE_DOWNHILL:			return "PHASE_DOWNHILL";
+		case PHASE_CRITICAL:			return "PHASE_CRITICAL";
+		case PHASE_WAIT_REQUEST:	return "PHASE_WAIT_REQUEST";
+		case PHASE_WAIT_ACCEPTS:	return "PHASE_WAIT_ACCEPTS";
+		case MSG_REQUEST:					return "MSG_REQUEST";
+		case MSG_ACCEPT:					return "MSG_ACCEPT";
+		case MSG_RELEASE:					return "MSG_RELEASE";
+		default:									return "UNKNOWN";
+	}
+}
 
 int timeval_subtract (result, x, y)
      struct timeval *result, *x, *y;
