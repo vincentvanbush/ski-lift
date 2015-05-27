@@ -33,7 +33,12 @@ void get_initial_values (int *mstrtid, int *number_of_skiers, int **tids, GHashT
 	pvm_upkint(second_lift_capacity, 1, 1);
 }
 
-void send_accept_msg(int dest_tid, struct state_info info) {
+void send_accept_msg(int mstrtid, int dest_tid, struct state_info info) {
+	char diag[200];
+	sprintf(diag, "I'm sending ACCEPT to %d mytid is %d and local_clock %d",dest_tid, info.mytid, *info.local_clock);
+	diag_msg(mstrtid, info.mytid, diag);
+
+
 	int *sender_weight_ptr = g_hash_table_lookup(info.skiers_weights, &dest_tid);
 	*info.lift_free -= *sender_weight_ptr;
 	*info.local_clock += 1;
@@ -44,9 +49,13 @@ void send_accept_msg(int dest_tid, struct state_info info) {
 	pvm_pkint(&info.mytid, 1, 1);
 	pvm_pkint(info.local_clock, 1, 1);
 	pvm_send(dest_tid, tag);
+	
+	// char diag[200];
+	sprintf(diag, "Send ACCEPT to %d", dest_tid);
+	diag_msg(mstrtid, info.mytid, diag);
 }
 
-void mcast_accept_msg(struct state_info info) {
+void mcast_accept_msg(int mstrtid, struct state_info info) {
 	int len = g_queue_get_length(info.waiting_req_q);
 	int *tids = malloc(len * sizeof(int));
 	int i = 0;
@@ -63,9 +72,17 @@ void mcast_accept_msg(struct state_info info) {
 	pvm_pkint(&info.mytid, 1, 1);
 	pvm_pkint(info.local_clock, 1, 1);
 	pvm_mcast(tids, len, tag);
+
+	char diag[200];
+	sprintf(diag, "Mcast ACCEPT");
+	diag_msg(mstrtid, info.mytid, diag);
 }
 
-void bcast_request_msg(struct state_info info) {
+void bcast_request_msg(int mstrtid, struct state_info info) {
+	char diag[200];
+	sprintf(diag, "Values bcasting REQUEST: mytid %d local_clock %d my_lift_number %d", info.mytid, *info.local_clock, *info.my_lift_number);
+	diag_msg(mstrtid, info.mytid, diag);
+
 	int tag = MSG_REQUEST;
 	*info.local_clock += 1;
 	pvm_initsend(PvmDataDefault);
@@ -74,9 +91,13 @@ void bcast_request_msg(struct state_info info) {
 	pvm_pkint(info.local_clock, 1, 1);
 	pvm_pkint(info.my_lift_number, 1, 1);
 	pvm_bcast(GROUP, MSG_REQUEST);
+
+	// char diag[200];
+	// sprintf(diag, "Broadcast REQUEST");
+	// diag_msg(mstrtid, info.mytid, diag);
 }
 
-void bcast_release_msg(struct state_info info) {
+void bcast_release_msg(int mstrtid, struct state_info info) {
 	int tag = MSG_RELEASE;
 	*info.local_clock += 1;
 	pvm_initsend(PvmDataDefault);
@@ -85,6 +106,10 @@ void bcast_release_msg(struct state_info info) {
 	pvm_pkint(info.local_clock, 1, 1);
 	pvm_pkint(info.my_lift_number, 1, 1);
 	pvm_bcast(GROUP, MSG_RELEASE);
+
+	char diag[200];
+	sprintf(diag, "Broadcast RELEASE");
+	diag_msg(mstrtid, info.mytid, diag);
 }
 
 void diag_msg(int mstrtid, int mytid, char *str) {
@@ -103,35 +128,47 @@ void diag_msg(int mstrtid, int mytid, char *str) {
 	pvm_send(mstrtid, MSG_DIAG);
 }
 
-void handle_request(struct msg incoming_msg, struct state_info info) {
+void handle_request(int mstrtid, struct msg incoming_msg, struct state_info info) {
+	char diag[200];
+	sprintf(diag,"Handluję z REQUESTEM; I got it in phase %d sender_tid is %d",info.phase, incoming_msg.sender_tid);
+	diag_msg(mstrtid, info.mytid, diag);
+
+
 	// handle Lamport clocks
 	update_lamport_recv(incoming_msg.timestamp, info.local_clock);
+	diag_msg(mstrtid, info.mytid, "-------------------------------------------");
 
 	int *my_weight_ptr = g_hash_table_lookup(info.skiers_weights, &info.mytid);
 	int my_weight = *my_weight_ptr;
 	int *sender_weight_ptr = g_hash_table_lookup(info.skiers_weights, &incoming_msg.sender_tid);
 	int sender_weight = *sender_weight_ptr;
+	diag_msg(mstrtid, info.mytid, "*********************************************");
 
 	if (info.phase != PHASE_WAIT_ACCEPTS) {
 		// Always send ACCEPT, don't care about priorities in those phases
 
-		send_accept_msg(incoming_msg.sender_tid, info);
+		sprintf(diag,"I'm just before invocing function to send accespt message");
+		diag_msg(mstrtid,info.mytid,diag);
+		send_accept_msg(mstrtid, incoming_msg.sender_tid, info);
+		// char *diag;
+		// sprintf(diag, "Send ACCEPT to %d", incoming_msg.sender_tid);
+		// diag_msg(mstrtid, info.mytid, diag);
 	} else {
 		// Send ACCEPT only if:
 		// a) my priority is worse than the sender's priority,
 		// b) or my priority is better but we both can fit
 		// c) or I want the other lift
 		if (*info.my_lift_number != incoming_msg.lift_number) { // I want the other lift
-			send_accept_msg(incoming_msg.sender_tid, info);
+			send_accept_msg(mstrtid, incoming_msg.sender_tid, info);
 		}
 		// my priority is worse
 		else if ( (*info.local_clock > incoming_msg.timestamp) || (*info.local_clock == incoming_msg.timestamp && info.mytid > incoming_msg.sender_tid) ) {
-			send_accept_msg(incoming_msg.sender_tid, info);
+			send_accept_msg(mstrtid, incoming_msg.sender_tid, info);
 		}
 		// my priority is better
 		else {
 			if (my_weight + sender_weight <= *info.lift_free) {
-				send_accept_msg(incoming_msg.sender_tid, info);
+				send_accept_msg(mstrtid, incoming_msg.sender_tid, info);
 			}
 			else { // add the sender to the queue of waiting requests for the lift
 				g_queue_push_tail(info.waiting_req_q, &incoming_msg.sender_tid);
@@ -140,7 +177,11 @@ void handle_request(struct msg incoming_msg, struct state_info info) {
 	}
 };
 
-void handle_accept (struct msg incoming_msg, struct state_info info) {
+void handle_accept (int mstrtid, struct msg incoming_msg, struct state_info info) {
+	char diag[200];
+	diag_msg(mstrtid, info.mytid, "Now I'm handling ACCEPT which I've got");
+
+
 	update_lamport_recv(incoming_msg.timestamp, info.local_clock);
 
 	int *my_weight_ptr = g_hash_table_lookup(info.skiers_weights, &info.mytid);
@@ -159,7 +200,7 @@ void handle_accept (struct msg incoming_msg, struct state_info info) {
 	else *info.can_enter_lift = 0;
 };
 
-void handle_release(struct msg incoming_msg, struct state_info info) {
+void handle_release(int mstrtid, struct msg incoming_msg, struct state_info info) {
 	update_lamport_recv(incoming_msg.timestamp, info.local_clock);
 
 	int *my_weight_ptr = g_hash_table_lookup(info.skiers_weights, &info.mytid);
@@ -176,11 +217,11 @@ void handle_release(struct msg incoming_msg, struct state_info info) {
 	}
 };
 
-void handle_message(struct msg incoming_msg, struct state_info info) {
+void handle_message(int mstrtid, struct msg incoming_msg, struct state_info info) {
   switch (incoming_msg.tag) {
-    case MSG_REQUEST:	handle_request(incoming_msg, info); break;
-    case MSG_ACCEPT:	handle_accept (incoming_msg, info); break;
-    case MSG_RELEASE:	handle_release(incoming_msg, info); break;
+    case MSG_REQUEST:	handle_request(mstrtid, incoming_msg, info); break;
+    case MSG_ACCEPT:	handle_accept (mstrtid, incoming_msg, info); break;
+    case MSG_RELEASE:	handle_release(mstrtid, incoming_msg, info); break;
   }
 }
 
@@ -274,14 +315,15 @@ main()
 
 	diag_msg(mstrtid, mytid, "Entering main loop");
 	while (1) {
-    int can_enter_lift = 0;
-    int chosen_lift = -1;
+    	int can_enter_lift = 0;
+    	int chosen_lift = -1;
 
 		// random waiting - down to the hill
+    	diag_msg(mstrtid, mytid, "Entering PHASE_DOWNHILL");
 		phase = PHASE_DOWNHILL;
-		char *msg_to_file = "First message";
-		char *phase_to_file = "PHASE_DOWNHILL";
-		logEvent(msg_to_file, phase_to_file, mytid);
+		// char *msg_to_file = "First message";
+		// char *phase_to_file = "PHASE_DOWNHILL";
+		// logEvent(msg_to_file, phase_to_file, mytid);
 
 		struct timeval timeout;
 		random_timeout(&timeout, 3, 10);
@@ -294,19 +336,22 @@ main()
 		elapsed.tv_usec = 0;
 
 		while (1) {
+			diag_msg(mstrtid, mytid, "Before trecv");
 			int bufid = pvm_trecv(-1, -1, &timeout);
 
 			if (bufid) {
+				diag_msg(mstrtid, mytid, "Got message in PHASE_DOWNHILL");
 				struct msg incoming_msg;
 				unpack(&incoming_msg);
 
 				int *sender_weight = g_hash_table_lookup(skiers_weights, &incoming_msg.sender_tid);
 
 				// handle the message accordingly
-        prepare_info(&info, mytid, &local_clock, phase, &chosen_lift, &can_enter_lift,
+        		prepare_info(&info, mytid, &local_clock, phase, &chosen_lift, &can_enter_lift,
                      &first_lift_free, &second_lift_free, incoming_msg,
 										 waiting_req_q1, waiting_req_q2);
-        handle_message(incoming_msg, info);
+        		info.skiers_weights = skiers_weights;
+        		handle_message(mstrtid, incoming_msg, info);
 			}
 
 
@@ -322,11 +367,15 @@ main()
 		}
 
 		// want to go up
+		diag_msg(mstrtid, mytid, "Entering PHASE_WAIT_REQUEST");
 		phase = PHASE_WAIT_REQUEST;
 
 		// choose the lift (1 or 2)
 		// determine if we can fit on the lift (based on our knowledge from the accepts we had sent)
 
+		char diag[200];
+		sprintf(diag, "My weight: %d, first_lift_free: %d, second_lift_free: %d",my_weight,first_lift_free,second_lift_free);
+		diag_msg(mstrtid, mytid, diag);
 		if (my_weight > first_lift_free && my_weight > second_lift_free) {
 			// no lift for us
 			// wait for RELEASE messages until we can fit in the lift
@@ -339,32 +388,46 @@ main()
 				prepare_info(&info, mytid, &local_clock, phase, &chosen_lift, &can_enter_lift,
                      &first_lift_free, &second_lift_free, incoming_msg,
 										 waiting_req_q1, waiting_req_q2);
-        handle_message(incoming_msg, info);
+				info.skiers_weights = skiers_weights;
+        		handle_message(mstrtid, incoming_msg, info);
 
 				// now check if we should break the loop and go to the next phase!
 				if (chosen_lift == LIFT_1 || chosen_lift == LIFT_2) {
 					// broadcast a request with our chosen lift and go to (*)
-					bcast_request_msg(info);
+					bcast_request_msg(mstrtid, info);
 					break;
 				}
-			}
+			}	
 
 		}
 		else { // if there is a fitting lift
 			if (my_weight >= first_lift_free && my_weight < second_lift_free) // can only go to first lift
+
 				chosen_lift = LIFT_1;
 			else if (my_weight < first_lift_free && my_weight >= second_lift_free) // can only go to second lift
 				chosen_lift = LIFT_2;
 			else // can go to either lift - randomize
 				chosen_lift = (rand() % 2 == 1) ? LIFT_1 : LIFT_2;
 
+
+			///
+			/// for debugging necessary values
+			info.my_lift_number = &chosen_lift;
+			info.mytid = mytid;
+			info.local_clock = &local_clock;
+			info.skiers_weights = skiers_weights;
+
 			// broadcast a request with our chosen lift and go to (*)
-			bcast_request_msg(info);
+			char diag[200];
+			sprintf(diag,"So I am here just before broadcasting REQUEST and I choose lift %d and in info %d",chosen_lift, *info.my_lift_number);
+			diag_msg(mstrtid, mytid, diag);
+			bcast_request_msg(mstrtid, info);
 		}
 
 		// waiting for accepts (*)
     // wait for enough accepts or just as much as required to be sure that we can get in
     // meanwhile: handle all incoming messages, responding accordingly (not send back accept only to those with worse priority that can't fit together with us)
+		diag_msg(mstrtid, mytid, "Entering PHASE_WAIT_ACCEPTS");
 		phase = PHASE_WAIT_ACCEPTS;
 		int pending = all_skiers_weight;
 		info.pending_accepts_sum = &pending;
@@ -376,7 +439,7 @@ main()
 			prepare_info(&info, mytid, &local_clock, phase, &chosen_lift, &can_enter_lift,
 									&first_lift_free, &second_lift_free, incoming_msg,
 									waiting_req_q1, waiting_req_q2);
-      handle_message(incoming_msg, info);
+      handle_message(mstrtid, incoming_msg, info);
 
 			// check if there are enough amount of acceptes - can break the loop and go to the critical section
 			if (can_enter_lift) {
@@ -385,6 +448,7 @@ main()
 		}
 
 		// random waiting up to the hill - critical section
+		diag_msg(mstrtid, mytid, "Entering PHASE_CRITICAL");
 		phase = PHASE_CRITICAL;
 
 		random_timeout(&timeout, 3, 10);
@@ -410,7 +474,7 @@ main()
 				prepare_info(&info, mytid, &local_clock, phase, &chosen_lift, &can_enter_lift,
                      &first_lift_free, &second_lift_free, incoming_msg,
 										 waiting_req_q1, waiting_req_q2);
-        handle_message(incoming_msg, info);
+        handle_message(mstrtid, incoming_msg, info);
 			}
 
 			// break the loop if time elapsed is more than the timeout, else wait for another message
@@ -425,13 +489,14 @@ main()
 		}
 
 		// release - broadcast the RELEASE message to all others
+		diag_msg(mstrtid, mytid, "Broadcast RELEASE");
 		info.mytid = mytid;
 		info.local_clock = &local_clock;
 		info.my_lift_number = &chosen_lift;
-		bcast_release_msg(info);
+		bcast_release_msg(mstrtid, info);
 
 		// send all the requests stored in the queue (mcast automatically clears it)
-		mcast_accept_msg(info);
+		mcast_accept_msg(mstrtid, info);
 	}
 
 	pvm_exit();
