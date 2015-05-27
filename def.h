@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pvm3.h>
+#include "logger.h"
 
 #define SKIERS_MAX_WEIGHT 100
 #define SKIERS_MIN_WEIGHT 50

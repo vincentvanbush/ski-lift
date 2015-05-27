@@ -11,8 +11,7 @@ void logEvent(char *message, char *phase, int id)
 {
     char fileName[255];
     FILE *file;
-    //sprintf(fileName,"/home/marcin/programowanie-rozproszone/logs/%d.log",id);
-    sprintf(fileName,"/home/iwan303/pvm3/src/Skiers/logs/%d.log",id);
+    sprintf(fileName,"/tmp/logs/%d.log",id);
 
     if(access(fileName,F_OK) != -1 && first != 1) //file.exists() == true
     {

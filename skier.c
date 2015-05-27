@@ -262,6 +262,9 @@ main()
 
 		// random waiting - down to the hill
 		phase = PHASE_DOWNHILL;
+		char *msg_to_file = "First message";
+		char *phase_to_file = "PHASE_DOWNHILL";
+		logEvent(msg_to_file, phase_to_file, mytid);
 
 		struct timeval timeout;
 		random_timeout(&timeout, 3, 10);
