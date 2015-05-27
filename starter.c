@@ -119,6 +119,12 @@ int main(int argc, char *argv[])
 		printf("%d: %s weight %d\n",who, slave_name, current_skier_weight);
 	}
 
+	while (1) {
+		pvm_recv(-1, MSG_DIAG);
+		char diag_str[200];
+		pvm_upkstr(diag_str);
+		printf("%s\n", diag_str);
+	}
 
 	pvm_exit();
 }

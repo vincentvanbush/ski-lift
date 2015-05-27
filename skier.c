@@ -87,6 +87,22 @@ void bcast_release_msg(struct state_info info) {
 	pvm_bcast(GROUP, MSG_RELEASE);
 }
 
+void diag_msg(int mstrtid, int mytid, char *str) {
+	struct timeval current_time;
+	time_t logTime = time(NULL);
+	char *timeStr =  asctime(localtime(&logTime));
+	gettimeofday(&current_time, NULL);
+	timeStr[strlen(timeStr)-6] = '\0';
+	timeStr = timeStr + 11;
+
+	char message[200];
+	sprintf(message, "(%d) %s.%d: %s", mytid, timeStr, current_time.tv_usec, str);
+
+	pvm_initsend(PvmDataDefault);
+	pvm_pkstr(message);
+	pvm_send(mstrtid, MSG_DIAG);
+}
+
 void handle_request(struct msg incoming_msg, struct state_info info) {
 	// handle Lamport clocks
 	update_lamport_recv(incoming_msg.timestamp, info.local_clock);
@@ -256,6 +272,7 @@ main()
 	int time_to_wait;
 	// main loop
 
+	diag_msg(mstrtid, mytid, "Entering main loop");
 	while (1) {
     int can_enter_lift = 0;
     int chosen_lift = -1;

@@ -21,7 +21,7 @@
 #define MSG_REQUEST 3
 #define MSG_ACCEPT 4
 #define MSG_RELEASE 5
-
+#define MSG_DIAG 6
 
 #define PHASE_DOWNHILL 10
 #define PHASE_WAIT_REQUEST 11
