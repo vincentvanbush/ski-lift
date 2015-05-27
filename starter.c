@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
 	if (argc >= 2) {
 		number_of_skiers = atoi(argv[1]);
 	} else {
-		number_of_skiers = rand() % 50;
+		number_of_skiers = rand() % 50 + 10;
 	}
 
 	printf("Liczba narciarzy: %d\n", number_of_skiers);
@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 	}
 
 	for(i=0; i<number_of_skiers; i++) {
-		printf("Narciarz %d ma wagę: %d\n", i, skiers_weights[i]);
+		printf("Narciarz %d ma wage: %d\n", i, skiers_weights[i]);
 	}
 	printf("Min waga: %d\n", min_skier_weight);
 	printf("Sum waga: %d\n", sum_skiers_weights);
@@ -53,8 +53,8 @@ int main(int argc, char *argv[])
 		second_lift_capacity = rand() % (max_perc_sum - min_perc_sum) + min_perc_sum;
 	} while (second_lift_capacity < min_skier_weight);
 
-	printf("Pierwszy wyciąg: %d\n", first_lift_capacity);
-	printf("Drugi wyciąg: %d\n", second_lift_capacity);
+	printf("Pierwszy wyciag: %d\n", first_lift_capacity);
+	printf("Drugi wyciag: %d\n", second_lift_capacity);
 
 
 	int mytid;
@@ -83,6 +83,7 @@ int main(int argc, char *argv[])
 	}
 
 	int current_skier_weight;
+
 	for( i=0 ; i<nproc ; i++ )
 	{
 		pvm_recv( -1, MSG_SLV );
@@ -91,6 +92,7 @@ int main(int argc, char *argv[])
 		pvm_upkint(&current_skier_weight, 1, 1);
 		printf("%d: %s weight %d\n",who, slave_name, current_skier_weight);
 	}
+
 
 	pvm_exit();
 }
