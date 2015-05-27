@@ -21,12 +21,25 @@ int main(int argc, char *argv[])
 	skiers_weights = malloc(sizeof(int) * number_of_skiers);
 
 
-	int min_skier_weight = SKIERS_MAX_WEIGHT;	
+
+	int min_skier_weight = SKIERS_MAX_WEIGHT;
 	int sum_skiers_weights = 0;
 
 	int i;
+
+	int weights_arg_index = -1;
+	for (i = 0; i < argc; i++) {
+		if (!strcmp(argv[i], "weights")) {
+			weights_arg_index = i;
+			break;
+		}
+	}
+
 	for(i=0; i<number_of_skiers; i++) {
-		skiers_weights[i] = rand() % (SKIERS_MAX_WEIGHT - SKIERS_MIN_WEIGHT + 1) + SKIERS_MIN_WEIGHT;
+		if (weights_arg_index == -1)
+			skiers_weights[i] = rand() % (SKIERS_MAX_WEIGHT - SKIERS_MIN_WEIGHT + 1) + SKIERS_MIN_WEIGHT;
+		else
+			skiers_weights[i] = atoi(argv[weights_arg_index + 1 + i]);
 		sum_skiers_weights += skiers_weights[i];
 		if (skiers_weights[i] < min_skier_weight) {
 			min_skier_weight = skiers_weights[i];
@@ -52,6 +65,19 @@ int main(int argc, char *argv[])
 	do {
 		second_lift_capacity = rand() % (max_perc_sum - min_perc_sum) + min_perc_sum;
 	} while (second_lift_capacity < min_skier_weight);
+
+	// read lifts capacities from console
+	int lifts_arg_index = -1;
+	for (i = 0; i < argc; i++) {
+		if (!strcmp(argv[i], "lifts")) {
+			lifts_arg_index = i;
+			break;
+		}
+	}
+	if (lifts_arg_index != -1) {
+		first_lift_capacity = atoi(argv[lifts_arg_index + 1]);
+		second_lift_capacity = atoi(argv[lifts_arg_index + 2]);
+	}
 
 	printf("Pierwszy wyciag: %d\n", first_lift_capacity);
 	printf("Drugi wyciag: %d\n", second_lift_capacity);
@@ -96,4 +122,3 @@ int main(int argc, char *argv[])
 
 	pvm_exit();
 }
-
