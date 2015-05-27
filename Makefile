@@ -10,7 +10,7 @@ $(PVM_HOME)/starter:	starter.c def.h
 	cc -g starter.c -o $(PVM_HOME)/starter -L$(PVMLIB) -I$(PVMINC) -lpvm3 -lgpvm3
 
 $(PVM_HOME)/skier:	skier.c def.h
-	cc -g skier.c -o $(PVM_HOME)/skier -L$(PVMLIB) -I$(PVMINC) -lpvm3 -lgpvm3
+	cc -g skier.c -o $(PVM_HOME)/skier -L$(PVMLIB) -I$(PVMINC) -lpvm3 -lgpvm3 `pkg-config --cflags --libs glib-2.0`
 
 clean:
 	rm $(PVM_HOME)/starter $(PVM_HOME)/skier
