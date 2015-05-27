@@ -89,6 +89,7 @@ int main(int argc, char *argv[])
 	int nproc, j, who;
 
 	mytid = pvm_mytid();
+	pvm_catchout(stdout);
 
 	nproc=pvm_spawn(SLAVENAME, NULL, PvmTaskDefault, "", number_of_skiers, tids);
 
