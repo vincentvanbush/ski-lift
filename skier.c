@@ -74,21 +74,18 @@ void send_accept_msg(int dest_tid, struct state_info info) {
 
 void mcast_accept_msg(struct state_info info) {
 	char diag[200];
-	diag_msg(info.mstrtid, info.mytid, "*** entering mcast_accept_msg");
+	// diag_msg(info.mstrtid, info.mytid, "*** entering mcast_accept_msg");
 	int len = g_queue_get_length(info.waiting_req_q);
-	diag_msg(info.mstrtid, info.mytid, "*** 0");
+	// diag_msg(info.mstrtid, info.mytid, "*** 0");
 	int *tids = malloc(len * sizeof(int));
 	int i = 0;
 	sprintf(diag, "*** %d processes awaiting accepts", g_queue_get_length(info.waiting_req_q));
 	diag_msg(info.mstrtid, info.mytid, diag);
 	while (!g_queue_is_empty(info.waiting_req_q)) {
 		int *tid = g_queue_pop_head(info.waiting_req_q);
-		sprintf(diag, "*** (mcast) tid=%d", *tid);
-		diag_msg(info.mstrtid, info.mytid, diag);
-
 		int *sender_weight_ptr = g_hash_table_lookup(info.skiers_weights, tid);
-		if (sender_weight_ptr == NULL)
-			diag_msg(info.mstrtid, info.mytid, "*** ACHTUNG");
+		// if (sender_weight_ptr == NULL)
+		// 	diag_msg(info.mstrtid, info.mytid, "*** ACHTUNG");
 
 		*info.lift_free -= *sender_weight_ptr;
 		tids[i] = *tid;
@@ -151,7 +148,7 @@ void handle_request(struct msg incoming_msg, struct state_info info) {
 	int sender_weight = *sender_weight_ptr;
 	// diag_msg(info.mstrtid, info.mytid, "*********************************************");
 
-	if (info.phase != PHASE_WAIT_ACCEPTS && info.phase != PHASE_CRITICAL) {
+	if (info.phase != PHASE_WAIT_ACCEPTS) {
 		// Always send ACCEPT, don't care about priorities in those phases
 
 		// sprintf(diag,"I'm just before invocing function to send accespt message");
@@ -160,7 +157,7 @@ void handle_request(struct msg incoming_msg, struct state_info info) {
 		// char *diag;
 		// sprintf(diag, "Send ACCEPT to %d", incoming_msg.sender_tid);
 		// diag_msg(mstrtid, info.mytid, diag);
-	} else if (info.phase != PHASE_CRITICAL) {
+	} else /*if (info.phase != PHASE_CRITICAL)*/ {
 		// Send ACCEPT only if:
 		// a) my priority is worse than the sender's priority,
 		// b) or my priority is better but we both can fit
@@ -186,18 +183,18 @@ void handle_request(struct msg incoming_msg, struct state_info info) {
 				diag_msg(info.mstrtid, info.mytid, diag);
 			}
 		}
-	} else {
+	} /*else {
 		int *tid = malloc(sizeof(int));
 		memcpy(tid, &incoming_msg.sender_tid, sizeof(int));
 		g_queue_push_tail(info.waiting_req_q, tid);
 		int *pushed = g_queue_peek_tail(info.waiting_req_q);
 		sprintf(diag, "*** pushed tid=%d", *pushed);
 		diag_msg(info.mstrtid, info.mytid, diag);
-	}
+	}*/
 };
 
 void handle_accept (struct msg incoming_msg, struct state_info info) {
-	diag_msg(info.mstrtid, info.mytid, "*** Entered handle_accept ***");
+	// diag_msg(info.mstrtid, info.mytid, "*** Entered handle_accept ***");
 	char diag[200];
 
 	update_lamport_recv(incoming_msg.timestamp, info.local_clock);
@@ -211,13 +208,16 @@ void handle_accept (struct msg incoming_msg, struct state_info info) {
 	// diag_msg(info.mstrtid, info.mytid, "*** Trying to subtract from pending accepts sum ***");
 	*info.pending_accepts_sum -= sender_weight;
 	// diag_msg(info.mstrtid, info.mytid, "*** Subtracted ***");
+
+	int *lift_free = (*info.my_lift_number == LIFT_1 ? info.lift1_free : info.lift2_free);
+
 	sprintf(diag, "free space on lift %d, pending accepts sum %d, my weight %d",
-					*info.lift_free, *info.pending_accepts_sum, my_weight);
+					*lift_free, *info.pending_accepts_sum, my_weight);
 	diag_msg(info.mstrtid, info.mytid, diag);
 
-	if (*info.lift_free - *info.pending_accepts_sum >= my_weight) {
+	if (*lift_free - *info.pending_accepts_sum >= my_weight) {
 		sprintf(diag, "can enter lift now");
-		*info.lift_free -= my_weight;
+		*lift_free -= my_weight;
     *info.can_enter_lift = 1;
 	}
 	else {
@@ -237,6 +237,9 @@ void handle_release(struct msg incoming_msg, struct state_info info) {
 
 	// free the space on a lift
 	*info.lift_free += sender_weight;
+	char diag[200];
+	sprintf(diag, "released by %d: sender_weight=%d, lift_free=%d",
+					incoming_msg.sender_tid, sender_weight, *info.lift_free);
 
 	// if in the PHASE_WAIT_REQUEST phase, try to choose the lift again
 	if (*info.lift_free >= my_weight) {
@@ -287,6 +290,8 @@ void prepare_info(struct state_info *info, int mytid, int *local_clock, int phas
     info->lift_free = second_lift_free;
 		info->waiting_req_q = waiting_req_q2;
   }
+	info->lift1_free = first_lift_free;
+	info->lift2_free = second_lift_free;
 }
 
 main()
@@ -354,7 +359,7 @@ main()
   	int chosen_lift = -1;
 
 		// random waiting - down to the hill
-    diag_msg(mstrtid, mytid, "entering PHASE_DOWNHILL");
+    // diag_msg(mstrtid, mytid, "entering PHASE_DOWNHILL");
 		phase = PHASE_DOWNHILL;
 		// char *msg_to_file = "First message";
 		// char *phase_to_file = "PHASE_DOWNHILL";
@@ -370,9 +375,11 @@ main()
 		elapsed.tv_sec = 0;
 		elapsed.tv_usec = 0;
 
+		sprintf(diag, "entered %s, time=%zu.%zu", stringify(phase), timeout.tv_sec, timeout.tv_usec);
+		diag_msg(mstrtid, mytid, diag);
 		while (1) {
-			sprintf(diag, "waiting for messages [phase=%s, time=%zu.%zu]", stringify(phase), timeout.tv_sec, timeout.tv_usec);
-			diag_msg(mstrtid, mytid, diag);
+
+
 			int bufid = pvm_trecv(-1, -1, &timeout);
 
 			if (bufid) {
@@ -403,14 +410,13 @@ main()
 		}
 
 		// want to go up
-		diag_msg(mstrtid, mytid, "entering PHASE_WAIT_REQUEST");
+		diag_msg(mstrtid, mytid, "");
 		phase = PHASE_WAIT_REQUEST;
 
 		// choose the lift (1 or 2)
 		// determine if we can fit on the lift (based on our knowledge from the accepts we had sent)
 
-
-		sprintf(diag, "my weight: %d, first_lift_free: %d, second_lift_free: %d",my_weight,first_lift_free,second_lift_free);
+		sprintf(diag, "entered PHASE_WAIT_REQUEST, weight=%d, LIFT_1=%d, LIFT_2=%d",my_weight,first_lift_free,second_lift_free);
 		diag_msg(mstrtid, mytid, diag);
 
 		if (my_weight > first_lift_free && my_weight > second_lift_free) {
@@ -418,7 +424,7 @@ main()
 			// wait for RELEASE messages until we can fit in the lift
 			// meanwhile: handle all incoming messages, responding accordingly (ALWAYS respond with accepts)
 			while (1) {
-				sprintf(diag, "no space in lifts, waiting for messages [phase=%s]", stringify(phase));
+				sprintf(diag, "no space in lifts, weight=%d, LIFT_1=%d, LIFT_2=%d",my_weight,first_lift_free,second_lift_free);
 				diag_msg(mstrtid, mytid, diag);
 
 				int bufid = pvm_recv(-1, -1);
@@ -433,7 +439,8 @@ main()
 
 				// now check if we should break the loop and go to the next phase!
 				if (chosen_lift == LIFT_1 || chosen_lift == LIFT_2) {
-					sprintf(diag, "my weight: %d, choosing %s", my_weight, stringify(chosen_lift));
+					sprintf(diag, "weight=%d, LIFT_1=%d, LIFT_2=%d, choosing %s",
+									my_weight, first_lift_free, second_lift_free, stringify(chosen_lift));
 					diag_msg(mstrtid, mytid, diag);
 
 					// broadcast a request with our chosen lift and go to (*)
@@ -446,17 +453,17 @@ main()
 		else { // if there is a fitting lift
 
 			if (my_weight <= first_lift_free && my_weight > second_lift_free) { // can only go to first lift
-				diag_msg(mstrtid, mytid, "*** can only fit on LIFT_1");
+				// diag_msg(mstrtid, mytid, "*** can only fit on LIFT_1");
 				chosen_lift = LIFT_1;
 			}
 
 			else if (my_weight > first_lift_free && my_weight <= second_lift_free) { // can only go to second lift
-				diag_msg(mstrtid, mytid, "*** can only fit on LIFT_2");
+				// diag_msg(mstrtid, mytid, "*** can only fit on LIFT_2");
 				chosen_lift = LIFT_2;
 			}
 
 			else {	// can go to either lift - randomize
-				diag_msg(mstrtid, mytid, "*** choosing lift randomly");
+				// diag_msg(mstrtid, mytid, "*** choosing lift randomly");
 				chosen_lift = (rand() % 2 == 1) ? LIFT_1 : LIFT_2;
 			}
 
@@ -470,21 +477,23 @@ main()
 			// broadcast a request with our chosen lift and go to (*)
 			bcast_request_msg(info);
 			// sprintf(diag,"So I am here just before broadcasting REQUEST and I choose lift %d and in info %d",chosen_lift, *info.my_lift_number);
-			sprintf(diag, "my weight: %d, choosing %s", my_weight, stringify(chosen_lift));
+			sprintf(diag, "weight=%d, LIFT_1=%d, LIFT_2=%d, choosing %s",
+							my_weight, first_lift_free, second_lift_free, stringify(chosen_lift));
 			diag_msg(mstrtid, mytid, diag);
 		}
 
 		// waiting for accepts (*)
     // wait for enough accepts or just as much as required to be sure that we can get in
     // meanwhile: handle all incoming messages, responding accordingly (not send back accept only to those with worse priority that can't fit together with us)
-		diag_msg(mstrtid, mytid, "entering PHASE_WAIT_ACCEPTS");
+		// diag_msg(mstrtid, mytid, "entering PHASE_WAIT_ACCEPTS");
 		phase = PHASE_WAIT_ACCEPTS;
 		int pending = all_skiers_weight;
 		info.pending_accepts_sum = &pending;
-		while (1) {
-			sprintf(diag, "waiting for messages [phase=%s]", stringify(phase));
-			diag_msg(mstrtid, mytid, diag);
 
+		sprintf(diag, "entered PHASE_WAIT_ACCEPTS, lift=%s", stringify(chosen_lift));
+		diag_msg(mstrtid, mytid, diag);
+
+		while (1) {
 			int bufid = pvm_recv(-1, -1);
 			struct msg incoming_msg;
 			unpack(&incoming_msg);
@@ -501,7 +510,6 @@ main()
 		}
 
 		// random waiting up to the hill - critical section
-		diag_msg(mstrtid, mytid, "Entering PHASE_CRITICAL");
 		phase = PHASE_CRITICAL;
 
 		random_timeout(&timeout, 3, 10);
@@ -511,10 +519,11 @@ main()
 		elapsed.tv_sec = 0;
 		elapsed.tv_usec = 0;
 
+		sprintf(diag, "entered PHASE_CRITICAL, lift=%s, time=%zu.%zu",
+						stringify(chosen_lift), timeout.tv_sec, timeout.tv_usec);
+		diag_msg(mstrtid, mytid, diag);
+
 		while (1) {
-			// handle all incoming messages, responding accordingly (ALWAYS respond with accepts)
-			sprintf(diag, "waiting for messages [phase=%s, time=%zu.%zu]", stringify(phase), timeout.tv_sec, timeout.tv_usec);
-			diag_msg(mstrtid, mytid, diag);
 			int bufid = pvm_trecv(-1, -1, &timeout);
 
 			if (bufid) {

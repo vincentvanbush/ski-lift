@@ -49,6 +49,8 @@ struct state_info {
 	void *waiting_req_q;
 	void *skiers_weights;	// GHashTable*
 	int *lift_free;
+	int *lift1_free;
+	int *lift2_free;
 	int *pending_accepts_sum;
 };
 
