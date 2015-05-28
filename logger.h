@@ -7,11 +7,11 @@
 #include <sys/time.h>
 
 int first = 1;
-void logEvent(char *message, char *phase, int id)
+void logEvent(int mytid, char *str)
 {
     char fileName[255];
     FILE *file;
-    sprintf(fileName,"/tmp/logs/%d.log",id);
+    sprintf(fileName,"/tmp/logs/%d.log",mytid);
 
     if(access(fileName,F_OK) != -1 && first != 1) //file.exists() == true
     {
@@ -23,18 +23,9 @@ void logEvent(char *message, char *phase, int id)
         first = 0;
     }
 
-    
-    struct timeval current_time;
-    time_t logTime = time(NULL);
-    char *timeStr =  asctime(localtime(&logTime));
-    gettimeofday(&current_time, NULL);
-    timeStr[strlen(timeStr)-6] = '\0';
-    timeStr = timeStr + 11;
-    fprintf(file,"%s %06ld: %s\n",timeStr, current_time.tv_usec ,phase);
-    fprintf(file,"%s\n",message);
-    fprintf(file,"\n");
+    fprintf(file,"%s\n",str);
     fclose(file);
-    
+
 
 }
 

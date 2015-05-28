@@ -61,6 +61,8 @@ char *stringify(int what) {
 		case MSG_REQUEST:					return "MSG_REQUEST";
 		case MSG_ACCEPT:					return "MSG_ACCEPT";
 		case MSG_RELEASE:					return "MSG_RELEASE";
+		case LIFT_1:							return "LIFT_1";
+		case LIFT_2:							return "LIFT_2";
 		default:									return "UNKNOWN";
 	}
 }
