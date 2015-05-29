@@ -52,6 +52,7 @@ struct state_info {
 	int *lift1_free;
 	int *lift2_free;
 	int *pending_accepts_sum;
+	int *accepts_received;
 };
 
 char *stringify(int what) {

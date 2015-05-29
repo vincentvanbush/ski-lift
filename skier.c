@@ -213,22 +213,26 @@ void handle_accept (struct msg incoming_msg, struct state_info info) {
 	// decrement the pending_accepts_sum by sender weight
 	// diag_msg(info.mstrtid, info.mytid, "*** Trying to subtract from pending accepts sum ***");
 	*info.pending_accepts_sum -= sender_weight;
+	*info.accepts_received += 1;
 	// diag_msg(info.mstrtid, info.mytid, "*** Subtracted ***");
 
 	sprintf(diag, "*** my_lift_number=%s", stringify(*info.my_lift_number));
 	diag_msg(info.mstrtid, info.mytid, diag);
 	int *lift_free = (*info.my_lift_number == LIFT_1 ? info.lift1_free : info.lift2_free);
 
-	sprintf(diag, "free space on lift %d, pending accepts sum %d, my weight %d",
-					*lift_free, *info.pending_accepts_sum, my_weight);
+	sprintf(diag, "free space on lift %d, pending accepts sum %d, accepts received %d, my weight %d",
+					*lift_free, *info.pending_accepts_sum, *info.accepts_received, my_weight);
 	diag_msg(info.mstrtid, info.mytid, diag);
 
 	if (*lift_free - *info.pending_accepts_sum >= my_weight) {
 		sprintf(diag, "can enter lift now");
 		*lift_free -= my_weight;
     *info.can_enter_lift = 1;
-	}
-	else {
+	} else if (g_hash_table_size(info.skiers_weights) - 1 == *info.accepts_received) {
+		sprintf(diag, "n-1 accepts - can enter lift now");
+		*lift_free -= my_weight;
+		*info.can_enter_lift = 1;
+	}	else {
 		sprintf(diag, "not entering the lift yet");
 		*info.can_enter_lift = 0;
 	}
@@ -365,6 +369,8 @@ main()
 	while (1) {
   	int can_enter_lift = 0;
   	int chosen_lift = -1;
+		int accepts_received = 0;
+		info.accepts_received = &accepts_received;
 
 		// random waiting - down to the hill
     // diag_msg(mstrtid, mytid, "entering PHASE_DOWNHILL");
