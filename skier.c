@@ -67,9 +67,6 @@ void send_accept_msg(int dest_tid, struct state_info info) {
 	sprintf(diag, "sent MSG_ACCEPT to %d [timestamp=%d], was %d now %d",
 					dest_tid, *info.local_clock, old_free, *info.lift_free);
 	diag_msg(info.mstrtid, info.mytid, diag);
-	//
-	// sprintf(diag, "Send ACCEPT to %d", dest_tid);
-	// diag_msg(mstrtid, info.mytid, diag);
 }
 
 void mcast_accept_msg(struct state_info info) {
@@ -84,8 +81,6 @@ void mcast_accept_msg(struct state_info info) {
 	while (!g_queue_is_empty(info.waiting_req_q)) {
 		int *tid = g_queue_pop_head(info.waiting_req_q);
 		int *sender_weight_ptr = g_hash_table_lookup(info.skiers_weights, tid);
-		// if (sender_weight_ptr == NULL)
-		// 	diag_msg(info.mstrtid, info.mytid, "*** ACHTUNG");
 
 		*info.lift_free -= *sender_weight_ptr;
 		tids[i] = *tid;
@@ -148,7 +143,6 @@ void handle_request(struct msg incoming_msg, struct state_info info) {
 	// handle Lamport clocks
 	char diag[200];
 	update_lamport_recv(incoming_msg.timestamp, info.local_clock);
-	// diag_msg(info.mstrtid, info.mytid, "-------------------------------------------");
 
 	int *my_weight_ptr = g_hash_table_lookup(info.skiers_weights, &info.mytid);
 	int my_weight = *my_weight_ptr;
@@ -158,14 +152,8 @@ void handle_request(struct msg incoming_msg, struct state_info info) {
 
 	if (info.phase != PHASE_WAIT_ACCEPTS) {
 		// Always send ACCEPT, don't care about priorities in those phases
-
-		// sprintf(diag,"I'm just before invocing function to send accespt message");
-		// diag_msg(info.mstrtid,info.mytid,diag);
 		send_accept_msg(incoming_msg.sender_tid, info);
-		// char *diag;
-		// sprintf(diag, "Send ACCEPT to %d", incoming_msg.sender_tid);
-		// diag_msg(mstrtid, info.mytid, diag);
-	} else /*if (info.phase != PHASE_CRITICAL)*/ {
+	} else {
 		// Send ACCEPT only if:
 		// a) my priority is worse than the sender's priority,
 		// b) or my priority is better but we both can fit
@@ -191,14 +179,7 @@ void handle_request(struct msg incoming_msg, struct state_info info) {
 				diag_msg(info.mstrtid, info.mytid, diag);
 			}
 		}
-	} /*else {
-		int *tid = malloc(sizeof(int));
-		memcpy(tid, &incoming_msg.sender_tid, sizeof(int));
-		g_queue_push_tail(info.waiting_req_q, tid);
-		int *pushed = g_queue_peek_tail(info.waiting_req_q);
-		sprintf(diag, "*** pushed tid=%d", *pushed);
-		diag_msg(info.mstrtid, info.mytid, diag);
-	}*/
+	}
 };
 
 void handle_accept (struct msg incoming_msg, struct state_info info) {
@@ -213,10 +194,8 @@ void handle_accept (struct msg incoming_msg, struct state_info info) {
 	int sender_weight = *sender_weight_ptr;
 
 	// decrement the pending_accepts_sum by sender weight
-	// diag_msg(info.mstrtid, info.mytid, "*** Trying to subtract from pending accepts sum ***");
 	*info.pending_accepts_sum -= sender_weight;
 	*info.accepts_received += 1;
-	// diag_msg(info.mstrtid, info.mytid, "*** Subtracted ***");
 
 	sprintf(diag, "*** my_lift_number=%s", stringify(*info.my_lift_number));
 	diag_msg(info.mstrtid, info.mytid, diag);
@@ -357,14 +336,12 @@ main()
 	pvm_pkint(wat_to_send, 1, 1);
 	pvm_send(mstrtid, MSG_SLV);
 
-
 	// bariera
-
 	local_clock = 0;
 	pvm_barrier(GROUP, number_of_skiers);
 
-
 	int time_to_wait;
+
 	// main loop
 
 	diag_msg(mstrtid, mytid, "entering main loop");
@@ -376,12 +353,7 @@ main()
 		info.accepts_received = &accepts_received;
 		info.my_request_timestamp = &my_request_timestamp;
 
-		// random waiting - down to the hill
-    // diag_msg(mstrtid, mytid, "entering PHASE_DOWNHILL");
 		phase = PHASE_DOWNHILL;
-		// char *msg_to_file = "First message";
-		// char *phase_to_file = "PHASE_DOWNHILL";
-		// logEvent(msg_to_file, phase_to_file, mytid);
 
 		struct timeval timeout;
 		random_timeout(&timeout, 3, 10);
@@ -469,24 +441,16 @@ main()
 
 		}
 		else { // if there is a fitting lift
-
 			if (my_weight <= first_lift_free && my_weight > second_lift_free) { // can only go to first lift
-				// diag_msg(mstrtid, mytid, "*** can only fit on LIFT_1");
 				chosen_lift = LIFT_1;
 			}
-
 			else if (my_weight > first_lift_free && my_weight <= second_lift_free) { // can only go to second lift
-				// diag_msg(mstrtid, mytid, "*** can only fit on LIFT_2");
 				chosen_lift = LIFT_2;
 			}
-
 			else {	// can go to either lift - randomize
-				// diag_msg(mstrtid, mytid, "*** choosing lift randomly");
 				chosen_lift = (rand() % 2 == 1) ? LIFT_1 : LIFT_2;
 			}
 
-			///
-			/// for debugging necessary values
 			info.my_lift_number = &chosen_lift;
 			info.mytid = mytid;
 			info.local_clock = &local_clock;
@@ -545,14 +509,11 @@ main()
 
 		while (1) {
 			int bufid = pvm_trecv(-1, -1, &timeout);
-
 			if (bufid) {
 				// unpack the received message
 				struct msg incoming_msg;
 				// int msgtag = -1, sender_tid = -1, lift_number = -1, timestamp = -1;
 				unpack(&incoming_msg);
-
-				int *sender_weight = g_hash_table_lookup(skiers_weights, &incoming_msg.sender_tid);
 
 				// handle the message accordingly
 				prepare_info(&info, mytid, &local_clock, phase, &chosen_lift, &can_enter_lift,
