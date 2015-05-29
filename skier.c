@@ -131,6 +131,12 @@ void bcast_release_msg(struct state_info info) {
 	pvm_pkint(info.my_lift_number, 1, 1);
 	pvm_bcast(GROUP, MSG_RELEASE);
 
+	// Unallocate space on the lift
+	int *my_weight_ptr = g_hash_table_lookup(info.skiers_weights, &info.mytid);
+	int my_weight = *my_weight_ptr;
+	int *lift_free = (*info.my_lift_number == LIFT_1 ? info.lift1_free : info.lift2_free);
+	*lift_free += my_weight;
+
 	char diag[200];
 	sprintf(diag, "bcast MSG_RELEASE [timestamp=%d, lift_number=%s]", *info.local_clock, stringify(*info.my_lift_number));
 	diag_msg(info.mstrtid, info.mytid, diag);
@@ -209,6 +215,8 @@ void handle_accept (struct msg incoming_msg, struct state_info info) {
 	*info.pending_accepts_sum -= sender_weight;
 	// diag_msg(info.mstrtid, info.mytid, "*** Subtracted ***");
 
+	sprintf(diag, "*** my_lift_number=%s", stringify(*info.my_lift_number));
+	diag_msg(info.mstrtid, info.mytid, diag);
 	int *lift_free = (*info.my_lift_number == LIFT_1 ? info.lift1_free : info.lift2_free);
 
 	sprintf(diag, "free space on lift %d, pending accepts sum %d, my weight %d",
@@ -242,7 +250,7 @@ void handle_release(struct msg incoming_msg, struct state_info info) {
 					incoming_msg.sender_tid, sender_weight, *info.lift_free);
 
 	// if in the PHASE_WAIT_REQUEST phase, try to choose the lift again
-	if (*info.lift_free >= my_weight) {
+	if (info.phase == PHASE_WAIT_REQUEST && *info.lift_free >= my_weight) {
 		*info.my_lift_number = incoming_msg.lift_number;
 	}
 };
@@ -481,6 +489,8 @@ main()
 							my_weight, first_lift_free, second_lift_free, stringify(chosen_lift));
 			diag_msg(mstrtid, mytid, diag);
 		}
+
+		sprintf(diag, "*** chosen_lift=%s", stringify(chosen_lift));
 
 		// waiting for accepts (*)
     // wait for enough accepts or just as much as required to be sure that we can get in
