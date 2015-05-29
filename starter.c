@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
 		pvm_upkint(&who, 1, 1 );
 		pvm_upkstr(slave_name );
 		pvm_upkint(&current_skier_weight, 1, 1);
-		printf("%d: %s weight %d\n",who, slave_name, current_skier_weight);
+		printf("%d: weight %d\n",who, current_skier_weight);
 	}
 
 	int msgnum = 1;

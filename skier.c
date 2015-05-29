@@ -116,6 +116,8 @@ void bcast_request_msg(struct state_info info) {
 	pvm_pkint(info.my_lift_number, 1, 1);
 	pvm_bcast(GROUP, MSG_REQUEST);
 
+	*info.my_request_timestamp = *info.local_clock;
+
 	char diag[200];
 	sprintf(diag, "bcast MSG_REQUEST [timestamp=%d, lift_number=%s]", *info.local_clock, stringify(*info.my_lift_number));
 	diag_msg(info.mstrtid, info.mytid, diag);
@@ -172,7 +174,7 @@ void handle_request(struct msg incoming_msg, struct state_info info) {
 			send_accept_msg(incoming_msg.sender_tid, info);
 		}
 		// my priority is worse
-		else if ( (*info.local_clock > incoming_msg.timestamp) || (*info.local_clock == incoming_msg.timestamp && info.mytid > incoming_msg.sender_tid) ) {
+		else if ( (*info.my_request_timestamp > incoming_msg.timestamp) || (*info.my_request_timestamp == incoming_msg.timestamp && info.mytid > incoming_msg.sender_tid) ) {
 			send_accept_msg(incoming_msg.sender_tid, info);
 		}
 		// my priority is better
@@ -370,7 +372,9 @@ main()
   	int can_enter_lift = 0;
   	int chosen_lift = -1;
 		int accepts_received = 0;
+		int my_request_timestamp = -1;
 		info.accepts_received = &accepts_received;
+		info.my_request_timestamp = &my_request_timestamp;
 
 		// random waiting - down to the hill
     // diag_msg(mstrtid, mytid, "entering PHASE_DOWNHILL");

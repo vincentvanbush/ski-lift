@@ -53,6 +53,7 @@ struct state_info {
 	int *lift2_free;
 	int *pending_accepts_sum;
 	int *accepts_received;
+	int *my_request_timestamp;
 };
 
 char *stringify(int what) {
