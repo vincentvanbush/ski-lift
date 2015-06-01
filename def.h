@@ -47,6 +47,8 @@ struct state_info {
 	int phase;
 	int *my_lift_number;
 	void *waiting_req_q;
+	void *waiting_req_q1;
+	void *waiting_req_q2;
 	void *skiers_weights;	// GHashTable*
 	int *lift_free;
 	int *lift1_free;
