@@ -1,7 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pvm3.h>
-#include "logger.h"
+#include <time.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/time.h>
+// #include "logger.h"
 
 #define SKIERS_MAX_WEIGHT 100
 #define SKIERS_MIN_WEIGHT 50

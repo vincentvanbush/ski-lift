@@ -43,7 +43,7 @@ void diag_msg(int mstrtid, int mytid, char *str) {
 
 	char message[200];
 	sprintf(message, "(%d) %s.%zu: %s", mytid, timeStr, current_time.tv_usec, str);
-	logEvent(mytid, message);
+	// logEvent(mytid, message);
 
 	pvm_initsend(PvmDataDefault);
 	pvm_pkstr(message);
